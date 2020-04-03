@@ -1,0 +1,32 @@
+<html><head><title>Test</title></head>
+<body></body>
+<script>
+
+var iframe = document.createElement('iframe');
+iframe.src = 'data:text/html;charset=utf-8,' + encodeURI("");
+document.body.appendChild(iframe);
+console.log('iframe.contentWindow =', iframe.contentWindow);
+
+iframe.variables = {}
+
+ws = new WebSocket("ws://localhost:8181/core")
+ws.onmessage = function(event) {
+    msg = JSON.parse(event.data)
+    if (msg.type == "gui.page.show")
+    {
+        console.log(msg.data.__from);
+        iframe.src = encodeURI(msg.data.page);
+        document.body.appendChild(iframe);
+    }
+
+    else if (msg.type == "gui.value.set")
+    {
+        console.log("VARIABLE UPDATE!")
+        console.log(msg.data)
+        iframe.variables[msg.data.__from] = msg.data;
+        console.log(Object.keys(iframe.variables[msg.data.__from]))
+    }
+}
+</script>
+</html>
+
