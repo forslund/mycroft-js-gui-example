@@ -9,24 +9,80 @@ console.log('iframe.contentWindow =', iframe.contentWindow);
 
 iframe.variables = {}
 
+
+function qmlToHtml(url) {
+    if (url.endsWith(".qml")) {
+        return url.substring(0, url.length - 3) + "html"
+    }
+    else {
+        return url
+    }
+}
+
+function show_page(url) {
+    console.log("Showing page " + url);
+    iframe.src = encodeURI(url);
+    document.body.appendChild(iframe);
+}
+
+
+namespaces = []
+gui_ws = null;
+
+// Temporary, will be removed in core and specified port will be used
+// Connect to main bus to get the GUI port
 ws = new WebSocket("ws://localhost:8181/core")
+
 ws.onmessage = function(event) {
     msg = JSON.parse(event.data)
-    if (msg.type == "gui.page.show")
-    {
-        console.log(msg.data.__from);
-        iframe.src = encodeURI(msg.data.page);
-        document.body.appendChild(iframe);
+    if (msg.type == "mycroft.gui.port") {
+        console.log("connectiong to gui at " + msg.data["port"])
+        gui_ws = new WebSocket("ws://localhost:" + msg.data["port"] + "/gui")
+        gui_ws.onmessage = function(event) {
+            msg = JSON.parse(event.data)
+            switch (msg.type) {
+                case "mycroft.session.set": 
+                    // Set a variable
+                    console.log("Adding new variable")
+                    console.log(msg.data)
+                    namespace = msg.data.namespace
+                    iframe.variables[namespace] = msg.data
+                case "mycroft.session.list.insert":
+                    // Insert a new namespace at the top of the GUI page stack
+                    console.log("Adding new namespace")
+                    console.log(msg.data)
+                    skill = msg.data[0]['skill_id']
+                    namespaces.unshift([skill, []])
+                    break
+                case "mycroft.gui.list.insert":
+                    //Insert new page in the namespace
+                    console.log("Adding new page")
+                    console.log(msg.data)
+                    page = msg.data[0]['url']
+                    pos = msg.position
+                    namespaces[0][1].splice(pos, 0, page)
+                    show_page(qmlToHtml(page))
+                    break
+                case "mycroft.session.list.move":
+                    // TODO
+                    // Move the namespace at pos to the another position
+                    // Initial implementation, always moves to top
+                    // Called when skill is activated
+                    break
+                case "mycroft.events.triggered":
+                    // TODO
+                    // Used to switch page within currently active namespace
+                    skill = msg['namespace']
+                    pos = msg.data.number
+                    break
+            }
+        }
     }
+}
 
-    else if (msg.type == "gui.value.set")
-    {
-        console.log("VARIABLE UPDATE!")
-        console.log(msg.data)
-        iframe.variables[msg.data.__from] = msg.data;
-        console.log(Object.keys(iframe.variables[msg.data.__from]))
-    }
+ws.onopen = function (event) {
+    // Announce to trigger send of "mycroft.gui.port" message with gui port
+    ws.send("{\"type\": \"mycroft.gui.connected\", \"data\": {}}")
 }
 </script>
 </html>
-
