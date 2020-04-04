@@ -39,27 +39,29 @@ ws.onmessage = function(event) {
         console.log("connectiong to gui at " + msg.data["port"])
         gui_ws = new WebSocket("ws://localhost:" + msg.data["port"] + "/gui")
         gui_ws.onmessage = function(event) {
-            msg = JSON.parse(event.data)
-            switch (msg.type) {
+            gui_msg = JSON.parse(event.data)
+            switch (gui_msg.type) {
                 case "mycroft.session.set": 
                     // Set a variable
                     console.log("Adding new variable")
-                    console.log(msg.data)
-                    namespace = msg.data.namespace
+                    console.log(gui_msg.data)
+                    namespace = gui_msg.data.namespace
                     iframe.variables[namespace] = msg.data
+                    break
                 case "mycroft.session.list.insert":
                     // Insert a new namespace at the top of the GUI page stack
                     console.log("Adding new namespace")
-                    console.log(msg.data)
-                    skill = msg.data[0]['skill_id']
+                    console.log(event.data)
+                    skill = gui_msg.data[0]['skill_id']
                     namespaces.unshift([skill, []])
                     break
                 case "mycroft.gui.list.insert":
-                    //Insert new page in the namespace
+                    // Insert new page in the namespace
+                    // TODO: Insert multiple pages at the correct position
                     console.log("Adding new page")
-                    console.log(msg.data)
-                    page = msg.data[0]['url']
-                    pos = msg.position
+                    console.log(gui_msg.data)
+                    page = gui_msg.data[0]['url']
+                    pos = gui_msg.position
                     namespaces[0][1].splice(pos, 0, page)
                     show_page(qmlToHtml(page))
                     break
@@ -72,8 +74,12 @@ ws.onmessage = function(event) {
                 case "mycroft.events.triggered":
                     // TODO
                     // Used to switch page within currently active namespace
-                    skill = msg['namespace']
-                    pos = msg.data.number
+                    skill = gui_msg['namespace']
+                    pos = gui_msg.data.number
+                    break
+                default:
+                    // Log unhandled messages
+                    console.log("Unhandled message type: " + gui_msg.type)
                     break
             }
         }
