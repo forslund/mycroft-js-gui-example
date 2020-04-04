@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+function checkMinute(m) {
+    if (m < 10) {
+        return "0" + m
+    } else {
+        return m
+    }
+}
+
+function startTime() {
+  var today = new Date();
+  var h = today.getHours();
+  var m = today.getMinutes();
+  var s = today.getSeconds();
+  m = checkMinute(m)  
+document.getElementById('txt').innerHTML = "<h1><font color=\"#8080ff\">" + h + " : " + m + "</font>";
+  var t = setTimeout(startTime, 500);
+}
+
+</script>
+</head>
+
+<body onload="startTime()" bgcolor=#000000>
+Time
+<div id="txt"></div>
+
+</body>
+</html>
