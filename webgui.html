@@ -19,6 +19,29 @@ function qmlToHtml(url) {
     }
 }
 
+function moveNamespace(from, to) {
+    ns = namespaces.pop(from)
+    // ASSUME Move to top!
+    namespaces.unshift(ns)
+}
+
+function findNamespaceIndex(namespace) {
+    for (i = 0; i < namespaces.length; i++) {
+        if (namespaces[i] == namespace) {
+            return i
+        }
+    }
+    return 0
+}
+
+function insertPages(ns_index, pos, page_data) {
+    console.log("Inserting pages in namespace " + ns_index + " at pos " + pos)
+    for (i = 0; i < page_data.length; i++) {
+        page = gui_msg.data[i]['url']
+        namespaces[0][1].splice(pos + i, 0, page)
+    }
+}
+
 function show_page(url) {
     console.log("Showing page " + url);
     iframe.src = encodeURI(url);
@@ -55,21 +78,37 @@ ws.onmessage = function(event) {
                     skill = gui_msg.data[0]['skill_id']
                     namespaces.unshift([skill, []])
                     break
+                case "mycroft.session.list.remove":
+                    // Remove an existing namespace at position
+                    position = gui_msg.position
+                    console.log("Removing namespace at position " + position)
+                    namespaces.pop(position)
+                    // If currently visible namespace was removed show the new
+                    // visible namespace
+                    if (position == 0 && namespaces.length > 0) {
+                       show_page(namespaces[0][1][0])
+                    }
+                    break
                 case "mycroft.gui.list.insert":
                     // Insert new page in the namespace
                     // TODO: Insert multiple pages at the correct position
                     console.log("Adding new page")
                     console.log(gui_msg.data)
-                    page = gui_msg.data[0]['url']
                     pos = gui_msg.position
-                    namespaces[0][1].splice(pos, 0, page)
+                    ns_index = findNamespaceIndex(gui_msg.namespace)
+                    insertPages(ns_index, pos, gui_msg.data)
+                    console.log(namespaces[ns_index])
                     show_page(qmlToHtml(page))
                     break
                 case "mycroft.session.list.move":
-                    // TODO
                     // Move the namespace at pos to the another position
                     // Initial implementation, always moves to top
                     // Called when skill is activated
+                    console.log("Moving " + namespaces[gui_msg.from][0] +
+                                " to position " + gui_msg.to)
+                    moveNamespace(gui_msg.from, gui_msg.to)
+                    // Show new visible page
+                    show_page(namespaces[0][1][0])
                     break
                 case "mycroft.events.triggered":
                     // TODO
